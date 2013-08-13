@@ -4,16 +4,25 @@
 --  Maintainer: me@lelf.lu
 --
 --
--- This module contains function for formatting and parsing Double
--- value as C99 format string @%a@ does.
+-- This module contains functions for formatting and parsing floating point
+-- values as C99 printf/scanf functions with format string @%a@ do.
 --
--- Format is [-]0x/h.hhhhh/p±/ddd/, where /h.hhhhh/ is significand as a
--- hexadecimal floating-point number and /±ddd/ is exponent as a decimal
--- number. Significand has as many digits as needed to exactly
--- represent the floating point value, fractional part can be ommitted
--- if not needed.
---
+-- Format is [-]0x/h.hhhhh/p±/ddd/, where /h.hhhhh/ is significand as
+-- a hexadecimal floating-point number and /±ddd/ is exponent as a
+-- decimal number. Significand has as many digits as needed to exactly
+-- represent the value, fractional part may be ommitted.
+-- 
 -- Infinity and NaN are represented as @±inf@ and @nan@ accordingly.
+-- 
+-- For example, @(π ∷ Double) = 0x1.921fb54442d18p+1@.
+--
+-- Assertion
+-- 
+--     @Just x ≡ readFloatStr (showFloatStr x)@
+-- 
+-- holds (modulo bugs and cosmic rays).
+-- 
+-- Floating point radix is assumed to be 2.
 
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE TupleSections #-}
@@ -34,7 +43,7 @@ floatToHexDigits x = (,ep') $ d0 : map to16 chunked
           to16 = foldl1 (\a b -> 2*a+b)
 
 
--- | Format a value
+-- | Format a value. Will provide enough digits to reconstruct the value exactly.
 showFloatStr :: RealFloat a => a -> String
 showFloatStr x | isNaN x      = "nan"
                | isInfinite x = sign ++ "inf"
@@ -55,7 +64,7 @@ signed Pos x = x
 signed Neg x = -x
 
 
--- | Parse a value from 'String'
+-- | Parse a value from 'String'.
 readFloatStr :: RealFloat a => String -> Maybe a
 readFloatStr s = either (const Nothing) (Just . decode) pd
     where pd = parse parser "" s
