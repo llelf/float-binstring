@@ -13,7 +13,7 @@
 -- represent the floating point value, fractional part can be ommitted
 -- if not needed.
 --
--- Infinity and NaN are represented as @±inf@ ans @nan@ accordingly.
+-- Infinity and NaN are represented as @±inf@ and @nan@ accordingly.
 
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE TupleSections #-}
