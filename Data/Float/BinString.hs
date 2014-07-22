@@ -24,19 +24,22 @@
 -- 
 -- Floating point radix is assumed to be 2.
 
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
-module Data.Float.BinString (showFloatStr,readFloatStr) where
+module Data.Float.BinString (readFloat,showFloat) where
 
-import Numeric
+import qualified Numeric as Numeric
 import Data.List.Split
 import Data.Char
-import Text.Parsec
-import Control.Applicative ((<**>))
-
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Attoparsec.Text hiding (take,signed)
+import Control.Applicative ((<**>),(<|>),many)
+import Data.Monoid
 
 floatToHexDigits x = (,ep') $ d0 : map to16 chunked
-    where ((d0:ds),ep) = floatToDigits 2 x
+    where ((d0:ds),ep) = Numeric.floatToDigits 2 x
           ep' | x == 0    = ep
               | otherwise = ep-1
           chunked = map (take 4 . (++ repeat 0)) . chunksOf 4 $ ds
@@ -44,14 +47,14 @@ floatToHexDigits x = (,ep') $ d0 : map to16 chunked
 
 
 -- | Format a value. Will provide enough digits to reconstruct the value exactly.
-showFloatStr :: RealFloat a => a -> String
-showFloatStr x | isNaN x      = "nan"
-               | isInfinite x = sign ++ "inf"
-               | otherwise    = sign ++ "0x"
-                                ++ [ intToDigit $ head digs ]
-                                ++ [ '.' | length digs > 1 ]
-                                ++ (map intToDigit $ tail digs)
-                                ++ "p" ++ (if ep>=0 then "+" else "-") ++ show (abs ep)
+showFloat :: RealFloat a => a -> Text
+showFloat x | isNaN x      = T.pack "nan"
+            | isInfinite x = T.pack $ sign <> "inf"
+            | otherwise    = T.pack $ sign <> "0x"
+                             <> [ intToDigit $ head digs ]
+                             <> [ '.' | length digs > 1 ]
+                             <> (map intToDigit $ tail digs)
+                             <> "p" ++ (if ep>=0 then "+" else "-") ++ show (abs ep)
     where (digs,ep) = floatToHexDigits $ abs x
           sign      = [ '-' | x < 0 ]
 
@@ -65,12 +68,17 @@ signed Neg x = -x
 
 
 -- | Parse a value from 'String'.
-readFloatStr :: RealFloat a => String -> Maybe a
-readFloatStr s = either (const Nothing) (Just . decode) pd
-    where pd = parse parser "" s
+-- readFloatStr :: RealFloat a => String -> Maybe a
+-- readFloatStr s = either (const Nothing) (Just . decode) pd
+--     where pd = parse parser "" s
 
+readFloat :: RealFloat a => Text -> Maybe a
+readFloat s = either (const Nothing) (Just . decode) pd
+    where pd = parseOnly parser s
+
+decode :: (Eq a, Fractional a) => ParsedFloat -> a
 decode (Float sgn digs exp_sgn exp_digs) = signif * 2^^expon
-    where signif = signed sgn $ (fst $ head $ readHex digs) / 16^^(length digs - 1)
+    where signif = signed sgn $ (fst $ head $ Numeric.readHex digs) / 16^^(length digs - 1)
           expon  = signed exp_sgn $ read exp_digs
 
 decode NaN = 0/0
@@ -83,7 +91,6 @@ parserPeculiar' = optSign <**> ((string "nan" >> return (const NaN))
                                 <|> (string "inf" >> return Inf))
 
 
-
 parserNormal = do positive <- optSign
                   string "0x"
                   digit0 <- hexDigit
@@ -93,12 +100,15 @@ parserNormal = do positive <- optSign
                   expDigits <- many digit
                   return $ Float positive (digit0:restDigits) positiveExp expDigits
 
+hexDigit = satisfy isHexDigit
+
+
 optSign = option Pos $ (char '+' >> return Pos) <|> (char '-' >> return Neg)
 -- hexDigitD = hexDigit >>= \c -> return $ digitToInt c
 -- digitD = do { d <- digit; return $ digitToInt d }
 
 parser = do r <- try parserPeculiar <|> parserNormal
-            eof
+            endOfInput
             return r
 
 main = putStrLn "hi"
