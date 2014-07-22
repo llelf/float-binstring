@@ -27,16 +27,22 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
-module Data.Float.BinString (readFloat,showFloat) where
+module Data.Float.BinString (readFloat,showFloat,floatBuilder) where
 
 import qualified Numeric as Numeric
 import Data.List.Split
 import Data.Char
+
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Attoparsec.Text hiding (take,signed)
+import Data.Text.Lazy (toStrict)
+import Data.Text.Lazy.Builder
+import Data.Text.Lazy.Builder.Int (decimal)
+
+import Data.Attoparsec.Text hiding (take,signed,decimal)
 import Control.Applicative ((<**>),(<|>),many)
 import Data.Monoid
+
 
 floatToHexDigits x = (,ep') $ d0 : map to16 chunked
     where ((d0:ds),ep) = Numeric.floatToDigits 2 x
@@ -48,15 +54,23 @@ floatToHexDigits x = (,ep') $ d0 : map to16 chunked
 
 -- | Format a value. Will provide enough digits to reconstruct the value exactly.
 showFloat :: RealFloat a => a -> Text
-showFloat x | isNaN x      = T.pack "nan"
-            | isInfinite x = T.pack $ sign <> "inf"
-            | otherwise    = T.pack $ sign <> "0x"
-                             <> [ intToDigit $ head digs ]
-                             <> [ '.' | length digs > 1 ]
-                             <> (map intToDigit $ tail digs)
-                             <> "p" ++ (if ep>=0 then "+" else "-") ++ show (abs ep)
+showFloat = toStrict . toLazyText . floatBuilder
+
+
+floatBuilder :: RealFloat a => a -> Builder
+floatBuilder x | isNaN x      = fromText "nan"
+               | isInfinite x = sign <> fromText "inf"
+               | otherwise    = sign <> fromText "0x"
+                                <> singleton (intToDigit $ head digs)
+                                <> fromString [ '.' | length digs > 1 ]
+                                <> mconcat [ singleton $ intToDigit x | x <- tail digs]
+                                <> fromText "p"
+                                <> singleton (if ep>=0 then '+' else '-')
+                                <> decimal (abs ep)
     where (digs,ep) = floatToHexDigits $ abs x
-          sign      = [ '-' | x < 0 ]
+          sign      = fromString [ '-' | x < 0 ]
+
+
 
 
 data Sign = Pos | Neg deriving Show
@@ -67,11 +81,7 @@ signed Pos x = x
 signed Neg x = -x
 
 
--- | Parse a value from 'String'.
--- readFloatStr :: RealFloat a => String -> Maybe a
--- readFloatStr s = either (const Nothing) (Just . decode) pd
---     where pd = parse parser "" s
-
+-- | Parse a value from 'Text'.
 readFloat :: RealFloat a => Text -> Maybe a
 readFloat s = either (const Nothing) (Just . decode) pd
     where pd = parseOnly parser s
@@ -116,5 +126,4 @@ main = putStrLn "hi"
 
 -- parse (d0:ds) exp = m * 2**exp
 --     where m = d0 + foldr (\r x -> (r+x)/16) 0 ds
-
 
