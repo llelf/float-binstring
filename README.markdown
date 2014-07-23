@@ -9,3 +9,5 @@ represent the floating point value, fractional part may be ommitted.
 Infinity and NaN are represented as `±inf` and `nan` accordingly.
 
 For example, `(π ∷ Double) = 0x1.921fb54442d18p+1` (*exactly*).
+
+[![Build Status](https://travis-ci.org/llelf/float-binstring.svg?branch=master)](https://travis-ci.org/llelf/float-binstring)
