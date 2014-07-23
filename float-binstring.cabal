@@ -19,6 +19,7 @@ library
   build-depends:       base < 5, split >= 0.2, attoparsec >= 0.12, text >= 1.0
   default-language:    Haskell2010
 --  extra-source-files:  conv.c
+  ghc-options:  -O2
 
 
 source-repository head
