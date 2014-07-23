@@ -46,7 +46,7 @@ main = hspec $ do
 
 
 
-predefined = do c <- readFile "tests.pairs.10k"
+predefined = do c <- readFile "tests/tests.pairs.10k"
                 let vs = map parse $ lines c
                 forM_ vs $ \(x,s) ->
                     do liftA2 eq (readFloat s) (Just x) `shouldBe` Just True
