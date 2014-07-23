@@ -62,14 +62,15 @@ floatBuilder :: RealFloat a => a -> Builder
 floatBuilder x | isNaN x      = fromText "nan"
                | isInfinite x = sign <> fromText "inf"
                | otherwise    = sign <> fromText "0x"
-                                <> singleton (intToDigit $ head digs)
+                                <> singleton (intToDigit d0)
                                 <> fromString [ '.' | length digs > 1 ]
-                                <> mconcat [ singleton $ intToDigit x | x <- tail digs]
-                                <> fromText "p"
+                                <> fromString [ intToDigit x | x <- dtail]
+                                <> singleton 'p'
                                 <> singleton (if ep>=0 then '+' else '-')
                                 <> decimal (abs ep)
-    where (digs,ep) = floatToHexDigits $ abs x
-          sign      = fromString [ '-' | x < 0 ]
+    where (digs,ep)  = floatToHexDigits $ abs x
+          (d0:dtail) = digs
+          sign       = fromString [ '-' | x < 0 ]
 
 
 {-# DEPRECATED readFloatStr "use readFloat" #-}
@@ -96,7 +97,8 @@ readFloat s = either (const Nothing) (Just . decode) pd
 
 decode :: (Eq a, Fractional a) => ParsedFloat -> a
 decode (Float sgn digs exp_sgn exp_digs) = signif * 2^^expon
-    where signif = signed sgn $ (fst $ head $ Numeric.readHex digs) / 16^^(length digs - 1)
+    where signif = signed sgn v / 16^^(length digs - 1)
+          [(v,_)] = Numeric.readHex digs
           expon  = signed exp_sgn $ read exp_digs
 
 decode NaN = 0/0
@@ -122,16 +124,10 @@ hexDigit = satisfy isHexDigit
 
 
 optSign = option Pos $ (char '+' >> return Pos) <|> (char '-' >> return Neg)
--- hexDigitD = hexDigit >>= \c -> return $ digitToInt c
--- digitD = do { d <- digit; return $ digitToInt d }
+
 
 parser = do r <- try parserPeculiar <|> parserNormal
             endOfInput
             return r
 
-main = putStrLn "hi"
-
-
--- parse (d0:ds) exp = m * 2**exp
---     where m = d0 + foldr (\r x -> (r+x)/16) 0 ds
 
