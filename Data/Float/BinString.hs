@@ -27,7 +27,8 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
-module Data.Float.BinString (readFloat,showFloat,floatBuilder) where
+module Data.Float.BinString (readFloat,showFloat,floatBuilder,
+                             readFloatStr,showFloatStr) where
 
 import qualified Numeric as Numeric
 import Data.List.Split
@@ -71,6 +72,13 @@ floatBuilder x | isNaN x      = fromText "nan"
           sign      = fromString [ '-' | x < 0 ]
 
 
+{-# DEPRECATED readFloatStr "use readFloat" #-}
+readFloatStr :: RealFloat a => String -> Maybe a
+readFloatStr = readFloat . T.pack
+
+{-# DEPRECATED showFloatStr "use showFloat" #-}
+showFloatStr :: RealFloat a => a -> String
+showFloatStr = T.unpack . showFloat
 
 
 data Sign = Pos | Neg deriving Show
