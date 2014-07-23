@@ -6,21 +6,19 @@
 --
 -- This module contains functions for formatting and parsing floating point
 -- values as C99 printf/scanf functions with format string @%a@ do.
---
--- Format is [-]0x/h.hhhhh/p±/ddd/, where /h.hhhhh/ is significand as
--- a hexadecimal floating-point number and /±ddd/ is exponent as a
+-- 
+-- The format is [-]0x/h.hhhhh/p±/ddd/, where /h.hhhhh/ is significand
+-- as a hexadecimal floating-point number and /±ddd/ is exponent as a
 -- decimal number. Significand has as many digits as needed to exactly
 -- represent the value, fractional part may be ommitted.
 -- 
--- Infinity and NaN are represented as @±inf@ and @nan@ accordingly.
+-- Infinity and NaN values are represented as @±inf@ and @nan@ accordingly.
 -- 
--- For example, @(π ∷ Double) = 0x1.921fb54442d18p+1@.
---
--- Assertion
+-- For example, @(π ∷ Double) = 0x1.921fb54442d18p+1@ (/exactly/).
 -- 
---     @Just x ≡ readFloatStr (showFloatStr x)@
+-- This assertion holds (assuming NaN ≡ NaN)
 -- 
--- holds (modulo bugs and cosmic rays).
+-- prop> Just x ≡ readFloat (showFloat x)
 -- 
 -- Floating point radix is assumed to be 2.
 
@@ -58,6 +56,7 @@ showFloat :: RealFloat a => a -> Text
 showFloat = toStrict . toLazyText . floatBuilder
 
 
+-- | A 'Builder' for a value
 floatBuilder :: RealFloat a => a -> Builder
 floatBuilder x | isNaN x      = fromText "nan"
                | isInfinite x = sign <> fromText "inf"
